@@ -4,9 +4,6 @@ plugins {
 }
 
 android {
-    buildFeatures {
-        viewBinding = true
-    }
     namespace = "com.antimaling.app"
     compileSdk = 34
 
