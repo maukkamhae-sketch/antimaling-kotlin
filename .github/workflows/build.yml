@@ -1,7 +1,5 @@
 name: Build APK
 
-# Jalan otomatis tiap kali ada push ke folder ini, dan bisa dipicu manual
-# lewat tombol "Run workflow" di tab Actions.
 on:
   push:
     paths:
@@ -27,6 +25,9 @@ jobs:
 
       - name: Pasang Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Setujui lisensi Android SDK
+        run: yes | sdkmanager --licenses || true
 
       - name: Pasang Gradle
         uses: gradle/actions/setup-gradle@v4
