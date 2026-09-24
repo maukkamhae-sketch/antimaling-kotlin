@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="AntiMaling"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="20dp"
+        android:text="Lindungi HP ini: bisa dilacak, dikunci, atau dibunyikan alarm dari dashboard kalau hilang."
+        android:textColor="#8892B0" />
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. Server URL" android:textStyle="bold" />
+    <EditText
+        android:id="@+id/inputServerUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="https://antimaling-backend.up.railway.app"
+        android:inputType="textUri" />
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="2. Kode pairing dari dashboard" android:textStyle="bold" />
+    <EditText
+        android:id="@+id/inputPairCode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Contoh: 482913"
+        android:inputType="number" />
+
+    <Button
+        android:id="@+id/btnPair"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Pairing sekarang" />
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="20dp" android:background="#22283C" />
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3. Izin yang dibutuhkan" android:textStyle="bold" />
+
+    <TextView android:id="@+id/statusPairing" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="⬜ Belum pairing" />
+    <TextView android:id="@+id/statusLocation" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="⬜ Izin lokasi belum diberikan" />
+    <Button android:id="@+id/btnGrantLocation" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Berikan izin lokasi" />
+
+    <TextView android:id="@+id/statusAdmin" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Device Admin belum aktif" />
+    <Button android:id="@+id/btnGrantAdmin" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Device Admin" />
+
+    <Button
+        android:id="@+id/btnStartService"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Aktifkan Perlindungan"
+        android:enabled="false" />
+
+</LinearLayout>
+</ScrollView>

@@ -1,0 +1,170 @@
+package com.antimaling.app.service
+
+import android.app.*
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.os.BatteryManager
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import androidx.core.app.NotificationCompat
+import com.antimaling.app.net.Api
+import com.antimaling.app.net.Prefs
+import com.antimaling.app.receiver.DeviceAdminReceiverImpl
+import com.google.android.gms.location.*
+import org.json.JSONObject
+
+/** Jantung dari apk ini. Berjalan terus sebagai foreground service (ikonnya
+ *  tetap tampil di notifikasi, sesuai aturan Android untuk service semacam
+ *  ini — juga membuat jelas ke pemilik HP bahwa app sedang aktif memantau).
+ *
+ *  Tiap 15 detik: tanya ke server "ada perintah baru?", kirim lokasi & baterai
+ *  terbaru. Kalau ada perintah lock/alarm/wipe, langsung dieksekusi lalu
+ *  dikonfirmasi (ack) ke server. */
+class GuardService : Service() {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private var alarmPlayer: MediaPlayer? = null
+    private lateinit var fusedClient: FusedLocationProviderClient
+
+    private val pollRunnable = object : Runnable {
+        override fun run() {
+            Thread { pollOnce() }.start()
+            handler.postDelayed(this, 15_000)
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        fusedClient = LocationServices.getFusedLocationProviderClient(this)
+        startForeground(1, buildNotification())
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        handler.removeCallbacks(pollRunnable)
+        handler.post(pollRunnable)
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(pollRunnable)
+        alarmPlayer?.release()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun buildNotification(): Notification {
+        val channelId = "antimaling_guard"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val mgr = getSystemService(NotificationManager::class.java)
+            mgr.createNotificationChannel(NotificationChannel(channelId, "AntiMaling aktif", NotificationManager.IMPORTANCE_LOW))
+        }
+        return NotificationCompat.Builder(this, channelId)
+            .setContentTitle("AntiMaling aktif")
+            .setContentText("HP ini terlindungi dan bisa dilacak/dikunci dari dashboard.")
+            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun pollOnce() {
+        if (!Prefs.isPaired(this)) return
+        try {
+            val res = Api.fetchCommands(this)
+            val commands = res.optJSONArray("commands") ?: return
+            for (i in 0 until commands.length()) {
+                handleCommand(commands.getJSONObject(i))
+            }
+        } catch (e: Exception) {
+            // Offline / server tidak bisa dihubungi — coba lagi di siklus berikutnya.
+        }
+        reportLocationAndBattery()
+    }
+
+    private fun handleCommand(cmd: JSONObject) {
+        val id = cmd.optString("id")
+        val type = cmd.optString("type")
+        val result = try {
+            when (type) {
+                "lock" -> { lockNow(); "locked" }
+                "alarm" -> { startAlarm(); "alarm_on" }
+                "stop_alarm" -> { stopAlarm(); "alarm_off" }
+                "locate" -> { requestFreshLocation(); "locating" }
+                "wipe" -> { wipeDevice(); "wiping" }
+                else -> "unknown_command"
+            }
+        } catch (e: Exception) {
+            "error: ${e.message}"
+        }
+        try { Api.ackCommand(this, id, result) } catch (e: Exception) { /* diabaikan, akan tetap "pending" dan dicoba lagi */ }
+    }
+
+    /** Butuh Device Admin aktif. Kalau belum diaktifkan user, akan gagal diam-diam
+     *  (dicatat sebagai error di hasil ack) — arahkan user mengaktifkannya lagi
+     *  dari MainActivity. */
+    private fun lockNow() {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(this, DeviceAdminReceiverImpl::class.java)
+        if (dpm.isAdminActive(admin)) dpm.lockNow() else throw IllegalStateException("Device Admin belum aktif")
+    }
+
+    private fun wipeDevice() {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(this, DeviceAdminReceiverImpl::class.java)
+        if (dpm.isAdminActive(admin)) dpm.wipeData(0) else throw IllegalStateException("Device Admin belum aktif")
+    }
+
+    private fun startAlarm() {
+        if (alarmPlayer?.isPlaying == true) return
+        val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        alarmPlayer = MediaPlayer().apply {
+            setAudioStreamType(AudioManager.STREAM_ALARM)
+            setDataSource(this@GuardService, uri)
+            isLooping = true
+            prepare(); start()
+        }
+        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
+    }
+
+    private fun stopAlarm() {
+        alarmPlayer?.let { if (it.isPlaying) it.stop(); it.release() }
+        alarmPlayer = null
+    }
+
+    @Suppress("MissingPermission") // izin lokasi sudah dicek di MainActivity sebelum service ini dijalankan
+    private fun requestFreshLocation() {
+        val req = CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_HIGH_ACCURACY).build()
+        fusedClient.getCurrentLocation(req, null).addOnSuccessListener { loc ->
+            if (loc != null) {
+                try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
+            }
+        }
+    }
+
+    @Suppress("MissingPermission")
+    private fun reportLocationAndBattery() {
+        try {
+            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val percent = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            val charging = bm.isCharging
+            Api.sendBattery(this, percent, charging)
+        } catch (e: Exception) { }
+
+        try {
+            fusedClient.lastLocation.addOnSuccessListener { loc ->
+                if (loc != null) {
+                    try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
+                }
+            }
+        } catch (e: Exception) { }
+    }
+}
