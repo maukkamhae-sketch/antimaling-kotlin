@@ -23,11 +23,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Pasang Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setujui lisensi Android SDK
         run: yes | sdkmanager --licenses || true
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
 
       - name: Pasang Gradle
         uses: gradle/actions/setup-gradle@v4
