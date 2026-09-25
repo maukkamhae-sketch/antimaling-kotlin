@@ -103,7 +103,8 @@ class GuardService : Service() {
         } catch (e: Exception) {
             "error: ${e.message}"
         }
-        try { Api.ackCommand(this, id, result) } catch (e: Exception) { /* diabaikan, akan tetap "pending" dan dicoba lagi */ }
+        try { Api.ackCommand(this, id, result) } catch (e: Exception) { }
+        showDebugNotif("Command: $type -> $result")
     }
 
     /** Butuh Device Admin aktif. Kalau belum diaktifkan user, akan gagal diam-diam
@@ -166,5 +167,20 @@ class GuardService : Service() {
                 }
             }
         } catch (e: Exception) { }
+    }
+
+    private fun showDebugNotif(msg: String) {
+        val channelId = "antimaling_debug"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val mgr = getSystemService(NotificationManager::class.java)
+            mgr.createNotificationChannel(NotificationChannel(channelId, "AntiMaling debug", NotificationManager.IMPORTANCE_HIGH))
+        }
+        val notif = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("AntiMaling debug")
+            .setContentText(msg)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(999, notif)
     }
 }
