@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.inputServerUrl.setText(Prefs.serverUrl(this).ifBlank { "https://" })
+        binding.inputServerUrl.setText(Prefs.serverUrl(this).ifBlank { "https://alltools-backend-production.up.railway.app" })
 
         binding.btnPair.setOnClickListener { doPairing() }
         binding.btnGrantLocation.setOnClickListener { requestLocationPermissions() }
