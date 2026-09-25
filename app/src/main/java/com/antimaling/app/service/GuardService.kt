@@ -17,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import com.antimaling.app.net.Api
 import com.antimaling.app.net.Prefs
 import com.antimaling.app.receiver.DeviceAdminReceiverImpl
+import com.antimaling.app.ui.LockScreenActivity
 import com.google.android.gms.location.*
 import org.json.JSONObject
 
@@ -93,7 +94,7 @@ class GuardService : Service() {
         val type = cmd.optString("type")
         val result = try {
             when (type) {
-                "lock" -> { lockNow(); "locked" }
+                "lock" -> { lockNow(cmd.optString("pin")); "locked" }
                 "alarm" -> { startAlarm(); "alarm_on" }
                 "stop_alarm" -> { stopAlarm(); "alarm_off" }
                 "locate" -> { requestFreshLocation(); "locating" }
@@ -108,11 +109,24 @@ class GuardService : Service() {
 
     /** Butuh Device Admin aktif. Kalau belum diaktifkan user, akan gagal diam-diam
      *  (dicatat sebagai error di hasil ack) — arahkan user mengaktifkannya lagi
-     *  dari MainActivity. */
-    private fun lockNow() {
+     *  dari MainActivity.
+     *
+     *  Dua lapis: (1) dpm.lockNow() langsung mematikan layar pakai lock method
+     *  bawaan HP (PIN/pola/sidik jari asli pemilik) sebagai pengaman instan;
+     *  (2) LockScreenActivity kita sendiri tampil di atas begitu layar
+     *  dibuka lagi, menampilkan pesan kustom dan minta PIN yang diset dari
+     *  dashboard (pin ini independen dari lock method bawaan HP). */
+    private fun lockNow(pin: String) {
+        if (pin.isBlank()) throw IllegalArgumentException("PIN kosong dari server")
+        Prefs.setLockPin(this, pin)
+
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DeviceAdminReceiverImpl::class.java)
         if (dpm.isAdminActive(admin)) dpm.lockNow() else throw IllegalStateException("Device Admin belum aktif")
+
+        val intent = Intent(this, LockScreenActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        startActivity(intent)
     }
 
     private fun wipeDevice() {

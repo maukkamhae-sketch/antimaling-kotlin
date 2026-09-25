@@ -11,10 +11,9 @@ import java.net.URL
 object Api {
 
     private fun call(ctx: Context, path: String, method: String, body: JSONObject?, useApiKey: Boolean): JSONObject {
-        val base = Prefs.serverUrl(ctx).trim().trimEnd('/')
+        val base = Prefs.serverUrl(ctx)
         require(base.isNotBlank()) { "Server URL belum diatur." }
-        val fullUrl = base + path
-        val conn = URL(fullUrl).openConnection() as HttpURLConnection
+        val conn = URL(base + path).openConnection() as HttpURLConnection
         conn.requestMethod = method
         conn.connectTimeout = 15000
         conn.readTimeout = 15000
@@ -31,7 +30,7 @@ object Api {
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val text = stream?.bufferedReader()?.readText() ?: "{}"
         val json = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
-        if (code !in 200..299) throw RuntimeException(json.optString("error", "HTTP $code di $fullUrl"))
+        if (code !in 200..299) throw RuntimeException(json.optString("error", "HTTP $code"))
         return json
     }
 

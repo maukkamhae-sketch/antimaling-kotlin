@@ -8,12 +8,9 @@ import android.content.Context
 object Prefs {
     private const val NAME = "antimaling_prefs"
 
-    fun serverUrl(ctx: Context): String =
-        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).getString("server_url", "") ?: ""
-
-    fun setServerUrl(ctx: Context, url: String) {
-        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).edit().putString("server_url", url.trimEnd('/')).apply()
-    }
+    // Server sudah tetap (server AllTools), jadi user tidak perlu isi alamat lagi —
+    // cukup kode pairing dari halaman AntiMaling di app AllTools.
+    fun serverUrl(ctx: Context): String = "https://alltools-backend-production.up.railway.app"
 
     fun apiKey(ctx: Context): String? =
         ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).getString("api_key", null)
@@ -29,4 +26,14 @@ object Prefs {
     }
 
     fun isPaired(ctx: Context): Boolean = !apiKey(ctx).isNullOrBlank()
+
+    /** PIN untuk buka LockScreenActivity, dikirim server tiap kali dashboard
+     *  mengirim perintah "lock". Disimpan lokal supaya layar kunci bisa
+     *  memverifikasinya walau HP sedang offline saat dibuka. */
+    fun setLockPin(ctx: Context, pin: String) {
+        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).edit().putString("lock_pin", pin).apply()
+    }
+
+    fun lockPin(ctx: Context): String? =
+        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE).getString("lock_pin", null)
 }
