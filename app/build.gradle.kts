@@ -4,9 +4,6 @@ plugins {
 }
 
 android {
-    buildFeatures {
-        viewBinding = true
-    }
     namespace = "com.antimaling.app"
     compileSdk = 34
 
@@ -29,6 +26,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+    }
+    buildFeatures {
+        viewBinding = true
     }
 }
 

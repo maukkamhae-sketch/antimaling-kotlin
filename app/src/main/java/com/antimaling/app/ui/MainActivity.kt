@@ -45,8 +45,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.inputServerUrl.setText(Prefs.serverUrl(this).ifBlank { "https://alltools-backend-production.up.railway.app" })
-
         binding.btnPair.setOnClickListener { doPairing() }
         binding.btnGrantLocation.setOnClickListener { requestLocationPermissions() }
         binding.btnGrantAdmin.setOnClickListener { requestDeviceAdminPrompt() }
@@ -61,10 +59,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun doPairing() {
-        val url = binding.inputServerUrl.text.toString().trim()
         val code = binding.inputPairCode.text.toString().trim()
-        if (url.isBlank() || code.isBlank()) { toast("Isi Server URL dan kode pairing dulu."); return }
-        Prefs.setServerUrl(this, url)
+        if (code.isBlank()) { toast("Isi kode pairing dulu."); return }
         binding.btnPair.isEnabled = false
         Thread {
             try {

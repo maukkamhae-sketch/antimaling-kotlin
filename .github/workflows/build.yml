@@ -1,5 +1,7 @@
 name: Build APK
 
+# Jalan otomatis tiap kali ada push ke folder ini, dan bisa dipicu manual
+# lewat tombol "Run workflow" di tab Actions.
 on:
   push:
     paths:
@@ -23,10 +25,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setujui lisensi Android SDK
-        run: yes | sdkmanager --licenses || true
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
+      - name: Pasang paket Android SDK yang dibutuhkan
+        # Runner GitHub sudah punya Android SDK bawaan (ANDROID_HOME).
+        # Jangan bikin SDK baru di path lain, cukup lengkapi paketnya di situ.
+        run: |
+          set -e
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Pasang Gradle
         uses: gradle/actions/setup-gradle@v4
