@@ -5,6 +5,8 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -21,13 +23,6 @@ import com.antimaling.app.ui.LockScreenActivity
 import com.google.android.gms.location.*
 import org.json.JSONObject
 
-/** Jantung dari apk ini. Berjalan terus sebagai foreground service (ikonnya
- *  tetap tampil di notifikasi, sesuai aturan Android untuk service semacam
- *  ini — juga membuat jelas ke pemilik HP bahwa app sedang aktif memantau).
- *
- *  Tiap 15 detik: tanya ke server "ada perintah baru?", kirim lokasi & baterai
- *  terbaru. Kalau ada perintah lock/alarm/wipe, langsung dieksekusi lalu
- *  dikonfirmasi (ack) ke server. */
 class GuardService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
@@ -84,7 +79,6 @@ class GuardService : Service() {
                 handleCommand(commands.getJSONObject(i))
             }
         } catch (e: Exception) {
-            // Offline / server tidak bisa dihubungi — coba lagi di siklus berikutnya.
         }
         reportLocationAndBattery()
     }
@@ -104,21 +98,15 @@ class GuardService : Service() {
         } catch (e: Exception) {
             "error: ${e.message}"
         }
-        try { Api.ackCommand(this, id, result) } catch (e: Exception) { /* diabaikan, akan tetap "pending" dan dicoba lagi */ }
+        try { Api.ackCommand(this, id, result) } catch (e: Exception) { }
+        showDebugNotif("Command: $type -> $result")
     }
 
-    /** Butuh Device Admin aktif. Kalau belum diaktifkan user, akan gagal diam-diam
-     *  (dicatat sebagai error di hasil ack) — arahkan user mengaktifkannya lagi
-     *  dari MainActivity.
-     *
-     *  Dua lapis: (1) dpm.lockNow() langsung mematikan layar pakai lock method
-     *  bawaan HP (PIN/pola/sidik jari asli pemilik) sebagai pengaman instan;
-     *  (2) LockScreenActivity kita sendiri tampil di atas begitu layar
-     *  dibuka lagi, menampilkan pesan kustom dan minta PIN yang diset dari
-     *  dashboard (pin ini independen dari lock method bawaan HP). */
     private fun lockNow(pin: String) {
         if (pin.isBlank()) throw IllegalArgumentException("PIN kosong dari server")
         Prefs.setLockPin(this, pin)
+
+        flashTorch(3)
 
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DeviceAdminReceiverImpl::class.java)
@@ -127,6 +115,22 @@ class GuardService : Service() {
         val intent = Intent(this, LockScreenActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
+    }
+
+    private fun flashTorch(times: Int) {
+        try {
+            val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val camId = cm.cameraIdList.firstOrNull {
+                cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: return
+            repeat(times) {
+                cm.setTorchMode(camId, true)
+                Thread.sleep(300)
+                cm.setTorchMode(camId, false)
+                Thread.sleep(200)
+            }
+        } catch (e: Exception) {
+        }
     }
 
     private fun wipeDevice() {
@@ -154,7 +158,7 @@ class GuardService : Service() {
         alarmPlayer = null
     }
 
-    @Suppress("MissingPermission") // izin lokasi sudah dicek di MainActivity sebelum service ini dijalankan
+    @Suppress("MissingPermission")
     private fun requestFreshLocation() {
         val req = CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_HIGH_ACCURACY).build()
         fusedClient.getCurrentLocation(req, null).addOnSuccessListener { loc ->
@@ -180,5 +184,20 @@ class GuardService : Service() {
                 }
             }
         } catch (e: Exception) { }
+    }
+
+    private fun showDebugNotif(msg: String) {
+        val channelId = "antimaling_debug"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val mgr = getSystemService(NotificationManager::class.java)
+            mgr.createNotificationChannel(NotificationChannel(channelId, "AntiMaling debug", NotificationManager.IMPORTANCE_HIGH))
+        }
+        val notif = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("AntiMaling debug")
+            .setContentText(msg)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(999, notif)
     }
 }
