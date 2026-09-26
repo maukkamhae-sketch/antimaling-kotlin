@@ -24,6 +24,7 @@
         android:text="Lindungi HP ini: bisa dilacak, dikunci, atau dibunyikan alarm dari dashboard kalau hilang."
         android:textColor="#8892B0" />
 
+<<<<<<< HEAD
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. Server URL" android:textStyle="bold" />
     <EditText
         android:id="@+id/inputServerUrl"
@@ -33,13 +34,20 @@
         android:inputType="textUri" />
 
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="2. Kode pairing dari dashboard" android:textStyle="bold" />
+=======
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. Kode pairing" android:textStyle="bold" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beli proteksi di halaman AntiMaling pada app AllTools, lalu masukkan kode 6 digit yang muncul." android:textColor="#8892B0" android:layout_marginBottom="8dp" />
+>>>>>>> dbc921da1a0a5d4da748f1f5eca9bffc4f7ffc7b
     <EditText
         android:id="@+id/inputPairCode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Contoh: 482913"
         android:inputType="number" />
+<<<<<<< HEAD
 
+=======
+>>>>>>> dbc921da1a0a5d4da748f1f5eca9bffc4f7ffc7b
     <Button
         android:id="@+id/btnPair"
         android:layout_width="match_parent"
@@ -58,6 +66,12 @@
     <TextView android:id="@+id/statusAdmin" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Device Admin belum aktif" />
     <Button android:id="@+id/btnGrantAdmin" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Device Admin" />
 
+<<<<<<< HEAD
+=======
+    <TextView android:id="@+id/statusAccessibility" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Aksesibilitas blokir app belum aktif" />
+    <Button android:id="@+id/btnGrantAccessibility" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Blokir App" />
+
+>>>>>>> dbc921da1a0a5d4da748f1f5eca9bffc4f7ffc7b
     <Button
         android:id="@+id/btnStartService"
         android:layout_width="match_parent"
