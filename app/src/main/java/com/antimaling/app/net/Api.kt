@@ -2,6 +2,7 @@ package com.antimaling.app.net
 
 import android.content.Context
 import android.util.Base64
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -53,10 +54,15 @@ object Api {
             JSONObject().put("percent", percent).put("charging", charging), useApiKey = true)
     }
 
-    /** Upload foto dari kamera (base64 JPEG) ke server. */
     fun sendPhoto(ctx: Context, jpegBytes: ByteArray) {
         val b64 = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
         call(ctx, "/api/antimaling/device/photo", "POST",
             JSONObject().put("photo", b64), useApiKey = true)
+    }
+
+    fun fetchBlockedApps(ctx: Context): List<String> {
+        val res = call(ctx, "/api/antimaling/device/blocked-apps", "GET", null, useApiKey = true)
+        val arr = res.optJSONArray("packages") ?: return emptyList()
+        return (0 until arr.length()).map { arr.getString(it) }
     }
 }

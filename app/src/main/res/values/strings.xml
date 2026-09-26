@@ -1,9 +1,8 @@
 <resources>
     <string name="app_name">AntiMaling</string>
-
-    <!-- Layar kunci: ganti teks ini sesuai brand kamu. -->
     <string name="lock_title">HP Locked</string>
     <string name="lock_subtitle">Myditz Developer</string>
     <string name="lock_unlock_button">Buka</string>
     <string name="lock_wrong_pin">PIN salah, coba lagi.</string>
+    <string name="accessibility_description">AntiMaling butuh ini untuk memblokir app tertentu yang diatur dari dashboard.</string>
 </resources>

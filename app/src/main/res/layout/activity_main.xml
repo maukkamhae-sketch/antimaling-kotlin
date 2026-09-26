@@ -32,7 +32,6 @@
         android:layout_height="wrap_content"
         android:hint="Contoh: 482913"
         android:inputType="number" />
-
     <Button
         android:id="@+id/btnPair"
         android:layout_width="match_parent"
@@ -50,6 +49,9 @@
 
     <TextView android:id="@+id/statusAdmin" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Device Admin belum aktif" />
     <Button android:id="@+id/btnGrantAdmin" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Device Admin" />
+
+    <TextView android:id="@+id/statusAccessibility" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Aksesibilitas blokir app belum aktif" />
+    <Button android:id="@+id/btnGrantAccessibility" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Blokir App" />
 
     <Button
         android:id="@+id/btnStartService"

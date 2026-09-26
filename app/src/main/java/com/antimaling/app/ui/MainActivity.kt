@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -16,12 +17,9 @@ import com.antimaling.app.databinding.ActivityMainBinding
 import com.antimaling.app.net.Api
 import com.antimaling.app.net.Prefs
 import com.antimaling.app.receiver.DeviceAdminReceiverImpl
+import com.antimaling.app.service.AppBlockerService
 import com.antimaling.app.service.GuardService
 
-/** Satu-satunya layar setup di app ini. Alurnya SENGAJA butuh tindakan sadar
- *  dari pemilik HP: isi alamat server, isi kode pairing dari dashboard, kasih
- *  izin lokasi, aktifkan Device Admin — bukan sesuatu yang bisa dipasang diam-
- *  diam ke HP orang lain tanpa mereka tahu. */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -48,6 +46,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnPair.setOnClickListener { doPairing() }
         binding.btnGrantLocation.setOnClickListener { requestLocationPermissions() }
         binding.btnGrantAdmin.setOnClickListener { requestDeviceAdminPrompt() }
+        binding.btnGrantAccessibility.setOnClickListener { openAccessibilitySettings() }
         binding.btnStartService.setOnClickListener { startGuardService() }
 
         refreshStatus()
@@ -100,6 +99,18 @@ class MainActivity : AppCompatActivity() {
         requestDeviceAdmin.launch(intent)
     }
 
+    private fun openAccessibilitySettings() {
+        toast("Cari 'AntiMaling' → 'AntiMaling Blokir App', lalu aktifkan.")
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        return try {
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
+            enabled.contains(packageName + "/" + AppBlockerService::class.java.name)
+        } catch (e: Exception) { false }
+    }
+
     private fun startGuardService() {
         if (!Prefs.isPaired(this)) { toast("Pairing dulu sebelum menyalakan perlindungan."); return }
         ContextCompat.startForegroundService(this, Intent(this, GuardService::class.java))
@@ -112,10 +123,12 @@ class MainActivity : AppCompatActivity() {
         val hasLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val dpm = getSystemService(DevicePolicyManager::class.java)
         val hasAdmin = dpm.isAdminActive(ComponentName(this, DeviceAdminReceiverImpl::class.java))
+        val hasAccessibility = isAccessibilityEnabled()
 
         binding.statusPairing.text = if (paired) "✅ Sudah pairing (${Prefs.deviceName(this)})" else "⬜ Belum pairing"
         binding.statusLocation.text = if (hasLocation) "✅ Izin lokasi diberikan" else "⬜ Izin lokasi belum diberikan"
         binding.statusAdmin.text = if (hasAdmin) "✅ Device Admin aktif" else "⬜ Device Admin belum aktif"
+        binding.statusAccessibility.text = if (hasAccessibility) "✅ Blokir app aktif" else "⬜ Aksesibilitas blokir app belum aktif"
         binding.btnStartService.isEnabled = paired && hasLocation && hasAdmin
     }
 

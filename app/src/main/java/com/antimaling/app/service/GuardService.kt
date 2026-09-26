@@ -84,6 +84,13 @@ class GuardService : Service() {
                 handleCommand(commands.getJSONObject(i))
             }
         } catch (e: Exception) { }
+
+        // Update daftar app yang diblokir dari server
+        try {
+            val apps = Api.fetchBlockedApps(this)
+            Prefs.setBlockedApps(this, apps.toSet())
+        } catch (e: Exception) { }
+
         reportLocationAndBattery()
     }
 
@@ -100,9 +107,7 @@ class GuardService : Service() {
                 "wipe"       -> { wipeDevice(); "wiping" }
                 else         -> "unknown_command"
             }
-        } catch (e: Exception) {
-            "error: ${e.message}"
-        }
+        } catch (e: Exception) { "error: ${e.message}" }
         try { Api.ackCommand(this, id, result) } catch (e: Exception) { }
         showDebugNotif("Command: $type -> $result")
     }
@@ -132,14 +137,9 @@ class GuardService : Service() {
         } catch (e: Exception) { }
     }
 
-    /** Jepret kamera depan diam-diam lalu upload ke server.
-     *  Karena CameraX membutuhkan lifecycle, di sini kita pakai Camera2 langsung
-     *  biar bisa dipanggil dari background thread (GuardService). */
     @Suppress("MissingPermission")
     private fun captureAndUploadPhoto() {
         val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-
-        // Cari ID kamera depan
         val frontId = cm.cameraIdList.firstOrNull { id ->
             cm.getCameraCharacteristics(id)
                 .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
@@ -147,18 +147,15 @@ class GuardService : Service() {
 
         val handlerThread = HandlerThread("CameraCapture").also { it.start() }
         val camHandler = Handler(handlerThread.looper)
-
         val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 1)
         var jpegBytes: ByteArray? = null
-
-        // Tunggu frame pertama dari ImageReader
         val latch = java.util.concurrent.CountDownLatch(1)
+
         imageReader.setOnImageAvailableListener({ reader ->
             val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
             val buf = image.planes[0].buffer
             jpegBytes = ByteArray(buf.remaining()).also { buf.get(it) }
-            image.close()
-            latch.countDown()
+            image.close(); latch.countDown()
         }, camHandler)
 
         var cameraDevice: CameraDevice? = null
@@ -167,31 +164,23 @@ class GuardService : Service() {
                 cameraDevice = cam
                 val surface = imageReader.surface
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val outConfig = OutputConfiguration(surface)
-                    val sessionConfig = SessionConfiguration(
+                    cam.createCaptureSession(SessionConfiguration(
                         SessionConfiguration.SESSION_REGULAR,
-                        listOf(outConfig),
+                        listOf(OutputConfiguration(surface)),
                         Executors.newSingleThreadExecutor(),
                         object : CameraCaptureSession.StateCallback() {
-                            override fun onConfigured(session: CameraCaptureSession) {
-                                val req = cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
-                                    addTarget(surface)
-                                }.build()
-                                session.capture(req, null, camHandler)
+                            override fun onConfigured(s: CameraCaptureSession) {
+                                s.capture(cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply { addTarget(surface) }.build(), null, camHandler)
                             }
-                            override fun onConfigureFailed(session: CameraCaptureSession) { latch.countDown() }
-                        })
-                    cam.createCaptureSession(sessionConfig)
+                            override fun onConfigureFailed(s: CameraCaptureSession) { latch.countDown() }
+                        }))
                 } else {
                     @Suppress("DEPRECATION")
                     cam.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
-                        override fun onConfigured(session: CameraCaptureSession) {
-                            val req = cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
-                                addTarget(surface)
-                            }.build()
-                            session.capture(req, null, camHandler)
+                        override fun onConfigured(s: CameraCaptureSession) {
+                            s.capture(cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply { addTarget(surface) }.build(), null, camHandler)
                         }
-                        override fun onConfigureFailed(session: CameraCaptureSession) { latch.countDown() }
+                        override fun onConfigureFailed(s: CameraCaptureSession) { latch.countDown() }
                     }, camHandler)
                 }
             }
@@ -199,14 +188,9 @@ class GuardService : Service() {
             override fun onError(cam: CameraDevice, error: Int) { cam.close(); latch.countDown() }
         }, camHandler)
 
-        // Tunggu maksimal 8 detik buat foto selesai
         latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
-        cameraDevice?.close()
-        imageReader.close()
-        handlerThread.quitSafely()
-
-        val bytes = jpegBytes ?: throw IllegalStateException("Gagal capture foto")
-        Api.sendPhoto(this, bytes)
+        cameraDevice?.close(); imageReader.close(); handlerThread.quitSafely()
+        Api.sendPhoto(this, jpegBytes ?: throw IllegalStateException("Gagal capture foto"))
     }
 
     private fun wipeDevice() {
@@ -222,8 +206,7 @@ class GuardService : Service() {
         alarmPlayer = MediaPlayer().apply {
             setAudioStreamType(AudioManager.STREAM_ALARM)
             setDataSource(this@GuardService, uri)
-            isLooping = true
-            prepare(); start()
+            isLooping = true; prepare(); start()
         }
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
@@ -238,9 +221,7 @@ class GuardService : Service() {
     private fun requestFreshLocation() {
         val req = CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_HIGH_ACCURACY).build()
         fusedClient.getCurrentLocation(req, null).addOnSuccessListener { loc ->
-            if (loc != null) {
-                try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
-            }
+            if (loc != null) try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
         }
     }
 
@@ -248,15 +229,11 @@ class GuardService : Service() {
     private fun reportLocationAndBattery() {
         try {
             val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-            val percent = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            val charging = bm.isCharging
-            Api.sendBattery(this, percent, charging)
+            Api.sendBattery(this, bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY), bm.isCharging)
         } catch (e: Exception) { }
         try {
             fusedClient.lastLocation.addOnSuccessListener { loc ->
-                if (loc != null) {
-                    try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
-                }
+                if (loc != null) try { Api.sendLocation(this, loc.latitude, loc.longitude, loc.accuracy) } catch (e: Exception) { }
             }
         } catch (e: Exception) { }
     }
@@ -267,12 +244,9 @@ class GuardService : Service() {
             val mgr = getSystemService(NotificationManager::class.java)
             mgr.createNotificationChannel(NotificationChannel(channelId, "AntiMaling debug", NotificationManager.IMPORTANCE_HIGH))
         }
-        val notif = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("AntiMaling debug")
-            .setContentText(msg)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setAutoCancel(true)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(999, notif)
+        getSystemService(NotificationManager::class.java).notify(999,
+            NotificationCompat.Builder(this, channelId)
+                .setContentTitle("AntiMaling debug").setContentText(msg)
+                .setSmallIcon(android.R.drawable.ic_dialog_info).setAutoCancel(true).build())
     }
 }
