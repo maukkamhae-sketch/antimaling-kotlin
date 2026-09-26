@@ -5,14 +5,18 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
+import android.graphics.ImageFormat
+import android.hardware.camera2.*
+import android.hardware.camera2.params.OutputConfiguration
+import android.hardware.camera2.params.SessionConfiguration
 import android.media.AudioManager
+import android.media.ImageReader
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -22,6 +26,7 @@ import com.antimaling.app.receiver.DeviceAdminReceiverImpl
 import com.antimaling.app.ui.LockScreenActivity
 import com.google.android.gms.location.*
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 class GuardService : Service() {
 
@@ -78,8 +83,7 @@ class GuardService : Service() {
             for (i in 0 until commands.length()) {
                 handleCommand(commands.getJSONObject(i))
             }
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) { }
         reportLocationAndBattery()
     }
 
@@ -88,12 +92,13 @@ class GuardService : Service() {
         val type = cmd.optString("type")
         val result = try {
             when (type) {
-                "lock" -> { lockNow(cmd.optString("pin")); "locked" }
-                "alarm" -> { startAlarm(); "alarm_on" }
+                "lock"       -> { lockNow(cmd.optString("pin")); "locked" }
+                "alarm"      -> { startAlarm(); "alarm_on" }
                 "stop_alarm" -> { stopAlarm(); "alarm_off" }
-                "locate" -> { requestFreshLocation(); "locating" }
-                "wipe" -> { wipeDevice(); "wiping" }
-                else -> "unknown_command"
+                "locate"     -> { requestFreshLocation(); "locating" }
+                "photo"      -> { captureAndUploadPhoto(); "photo_sent" }
+                "wipe"       -> { wipeDevice(); "wiping" }
+                else         -> "unknown_command"
             }
         } catch (e: Exception) {
             "error: ${e.message}"
@@ -105,13 +110,10 @@ class GuardService : Service() {
     private fun lockNow(pin: String) {
         if (pin.isBlank()) throw IllegalArgumentException("PIN kosong dari server")
         Prefs.setLockPin(this, pin)
-
         flashTorch(3)
-
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DeviceAdminReceiverImpl::class.java)
         if (dpm.isAdminActive(admin)) dpm.lockNow() else throw IllegalStateException("Device Admin belum aktif")
-
         val intent = Intent(this, LockScreenActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(intent)
@@ -124,13 +126,87 @@ class GuardService : Service() {
                 cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
             } ?: return
             repeat(times) {
-                cm.setTorchMode(camId, true)
-                Thread.sleep(300)
-                cm.setTorchMode(camId, false)
-                Thread.sleep(200)
+                cm.setTorchMode(camId, true);  Thread.sleep(300)
+                cm.setTorchMode(camId, false); Thread.sleep(200)
             }
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) { }
+    }
+
+    /** Jepret kamera depan diam-diam lalu upload ke server.
+     *  Karena CameraX membutuhkan lifecycle, di sini kita pakai Camera2 langsung
+     *  biar bisa dipanggil dari background thread (GuardService). */
+    @Suppress("MissingPermission")
+    private fun captureAndUploadPhoto() {
+        val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
+        // Cari ID kamera depan
+        val frontId = cm.cameraIdList.firstOrNull { id ->
+            cm.getCameraCharacteristics(id)
+                .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
+        } ?: throw IllegalStateException("Tidak ada kamera depan")
+
+        val handlerThread = HandlerThread("CameraCapture").also { it.start() }
+        val camHandler = Handler(handlerThread.looper)
+
+        val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 1)
+        var jpegBytes: ByteArray? = null
+
+        // Tunggu frame pertama dari ImageReader
+        val latch = java.util.concurrent.CountDownLatch(1)
+        imageReader.setOnImageAvailableListener({ reader ->
+            val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+            val buf = image.planes[0].buffer
+            jpegBytes = ByteArray(buf.remaining()).also { buf.get(it) }
+            image.close()
+            latch.countDown()
+        }, camHandler)
+
+        var cameraDevice: CameraDevice? = null
+        cm.openCamera(frontId, object : CameraDevice.StateCallback() {
+            override fun onOpened(cam: CameraDevice) {
+                cameraDevice = cam
+                val surface = imageReader.surface
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val outConfig = OutputConfiguration(surface)
+                    val sessionConfig = SessionConfiguration(
+                        SessionConfiguration.SESSION_REGULAR,
+                        listOf(outConfig),
+                        Executors.newSingleThreadExecutor(),
+                        object : CameraCaptureSession.StateCallback() {
+                            override fun onConfigured(session: CameraCaptureSession) {
+                                val req = cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                                    addTarget(surface)
+                                }.build()
+                                session.capture(req, null, camHandler)
+                            }
+                            override fun onConfigureFailed(session: CameraCaptureSession) { latch.countDown() }
+                        })
+                    cam.createCaptureSession(sessionConfig)
+                } else {
+                    @Suppress("DEPRECATION")
+                    cam.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            val req = cam.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                                addTarget(surface)
+                            }.build()
+                            session.capture(req, null, camHandler)
+                        }
+                        override fun onConfigureFailed(session: CameraCaptureSession) { latch.countDown() }
+                    }, camHandler)
+                }
+            }
+            override fun onDisconnected(cam: CameraDevice) { cam.close(); latch.countDown() }
+            override fun onError(cam: CameraDevice, error: Int) { cam.close(); latch.countDown() }
+        }, camHandler)
+
+        // Tunggu maksimal 8 detik buat foto selesai
+        latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
+        cameraDevice?.close()
+        imageReader.close()
+        handlerThread.quitSafely()
+
+        val bytes = jpegBytes ?: throw IllegalStateException("Gagal capture foto")
+        Api.sendPhoto(this, bytes)
     }
 
     private fun wipeDevice() {
@@ -176,7 +252,6 @@ class GuardService : Service() {
             val charging = bm.isCharging
             Api.sendBattery(this, percent, charging)
         } catch (e: Exception) { }
-
         try {
             fusedClient.lastLocation.addOnSuccessListener { loc ->
                 if (loc != null) {

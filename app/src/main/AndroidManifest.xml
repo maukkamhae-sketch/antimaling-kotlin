@@ -7,9 +7,11 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.BATTERY_STATS" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="false"
@@ -17,9 +19,6 @@
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.AntiMaling"
         android:usesCleartextTraffic="false">
-
-        <!-- Ikon tetap terlihat di app drawer dengan sengaja: ini app untuk HP
-             milik sendiri, bukan app yang disembunyikan di HP orang lain. -->
 
         <activity
             android:name=".ui.MainActivity"
@@ -60,7 +59,7 @@
 
         <service
             android:name=".service.GuardService"
-            android:foregroundServiceType="location"
+            android:foregroundServiceType="location|camera"
             android:exported="false" />
 
     </application>

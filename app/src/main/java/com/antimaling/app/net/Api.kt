@@ -1,13 +1,11 @@
 package com.antimaling.app.net
 
 import android.content.Context
+import android.util.Base64
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Semua panggilan ke backend AntiMaling. Sengaja pakai HttpURLConnection bawaan
- *  Android saja (tanpa Retrofit/OkHttp) supaya skeleton ini ringan dan gampang
- *  dibaca — silakan ganti ke Retrofit kalau proyeknya berkembang. */
 object Api {
 
     private fun call(ctx: Context, path: String, method: String, body: JSONObject?, useApiKey: Boolean): JSONObject {
@@ -34,16 +32,15 @@ object Api {
         return json
     }
 
-    /** Dipanggil sekali dari layar Pairing, pakai kode 6 digit dari dashboard. */
     fun pairClaim(ctx: Context, code: String): JSONObject =
         call(ctx, "/api/antimaling/pair/claim", "POST", JSONObject().put("code", code), useApiKey = false)
 
-    /** Dipanggil berkala oleh GuardService untuk cek ada perintah baru atau tidak. */
     fun fetchCommands(ctx: Context): JSONObject =
         call(ctx, "/api/antimaling/device/commands", "GET", null, useApiKey = true)
 
     fun ackCommand(ctx: Context, commandId: String, result: String) {
-        call(ctx, "/api/antimaling/device/ack", "POST", JSONObject().put("commandId", commandId).put("result", result), useApiKey = true)
+        call(ctx, "/api/antimaling/device/ack", "POST",
+            JSONObject().put("commandId", commandId).put("result", result), useApiKey = true)
     }
 
     fun sendLocation(ctx: Context, lat: Double, lng: Double, accuracy: Float) {
@@ -54,5 +51,12 @@ object Api {
     fun sendBattery(ctx: Context, percent: Int, charging: Boolean) {
         call(ctx, "/api/antimaling/device/battery", "POST",
             JSONObject().put("percent", percent).put("charging", charging), useApiKey = true)
+    }
+
+    /** Upload foto dari kamera (base64 JPEG) ke server. */
+    fun sendPhoto(ctx: Context, jpegBytes: ByteArray) {
+        val b64 = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
+        call(ctx, "/api/antimaling/device/photo", "POST",
+            JSONObject().put("photo", b64), useApiKey = true)
     }
 }
