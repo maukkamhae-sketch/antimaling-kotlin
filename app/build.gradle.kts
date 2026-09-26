@@ -27,12 +27,9 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-<<<<<<< HEAD
-=======
     buildFeatures {
         viewBinding = true
     }
->>>>>>> dbc921da1a0a5d4da748f1f5eca9bffc4f7ffc7b
 }
 
 dependencies {
