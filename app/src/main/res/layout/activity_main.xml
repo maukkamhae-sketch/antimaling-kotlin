@@ -1,65 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="AntiMaling"
-        android:textSize="24sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="20dp"
-        android:text="Lindungi HP ini: bisa dilacak, dikunci, atau dibunyikan alarm dari dashboard kalau hilang."
-        android:textColor="#8892B0" />
-
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. Kode pairing" android:textStyle="bold" />
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beli proteksi di halaman AntiMaling pada app AllTools, lalu masukkan kode 6 digit yang muncul." android:textColor="#8892B0" android:layout_marginBottom="8dp" />
-    <EditText
-        android:id="@+id/inputPairCode"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Contoh: 482913"
-        android:inputType="number" />
-    <Button
-        android:id="@+id/btnPair"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Pairing sekarang" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="20dp" android:background="#22283C" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AntiMaling"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"/>
 
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3. Izin yang dibutuhkan" android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="20dp"
+            android:text="Lindungi HP ini: bisa dilacak, dikunci, atau dibunyikan alarm dari dashboard."
+            android:textColor="?attr/colorOnSurface"
+            android:alpha="0.6"/>
 
-    <TextView android:id="@+id/statusPairing" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="⬜ Belum pairing" />
-    <TextView android:id="@+id/statusLocation" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="⬜ Izin lokasi belum diberikan" />
-    <Button android:id="@+id/btnGrantLocation" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Berikan izin lokasi" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1. Kode pairing"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"/>
 
-    <TextView android:id="@+id/statusAdmin" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Device Admin belum aktif" />
-    <Button android:id="@+id/btnGrantAdmin" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Device Admin" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Beli proteksi di AllTools lalu masukkan kode 6 digit."
+            android:textColor="?attr/colorOnSurface"
+            android:alpha="0.6"/>
 
-    <TextView android:id="@+id/statusAccessibility" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="⬜ Aksesibilitas blokir app belum aktif" />
-    <Button android:id="@+id/btnGrantAccessibility" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Aktifkan Blokir App" />
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Contoh: 482913">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/inputPairCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <Button
-        android:id="@+id/btnStartService"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Aktifkan Perlindungan"
-        android:enabled="false" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPair"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Pairing sekarang"/>
 
-</LinearLayout>
-</ScrollView>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="20dp"
+            android:background="?attr/colorOutline"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3. Izin yang dibutuhkan"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"/>
+
+        <TextView
+            android:id="@+id/statusPairing"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Belum pairing"/>
+
+        <TextView
+            android:id="@+id/statusLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Izin lokasi belum diberikan"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGrantLocation"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Berikan izin lokasi"/>
+
+        <TextView
+            android:id="@+id/statusAdmin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Device Admin belum aktif"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGrantAdmin"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Aktifkan Device Admin"/>
+
+        <TextView
+            android:id="@+id/statusAccessibility"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Blokir app belum aktif"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGrantAccessibility"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Aktifkan Blokir App"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartService"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:enabled="false"
+            android:text="Aktifkan Perlindungan"/>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
