@@ -39,4 +39,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     // Tidak pakai library HTTP tambahan (Retrofit dkk) supaya skeleton ini ringan;
     // panggilan ke backend pakai HttpURLConnection bawaan Android (lihat net/Api.kt).
+
+    // CameraX: buat ambil foto diam-diam dari kamera depan pas PIN salah.
+    val camerax = "1.3.4"
+    implementation("androidx.camera:camera-core:$camerax")
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
 }

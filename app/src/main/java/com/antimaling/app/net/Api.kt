@@ -1,12 +1,13 @@
 package com.antimaling.app.net
 
 import android.content.Context
-import android.util.Base64
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** Semua panggilan ke backend AntiMaling. Sengaja pakai HttpURLConnection bawaan
+ *  Android saja (tanpa Retrofit/OkHttp) supaya skeleton ini ringan dan gampang
+ *  dibaca — silakan ganti ke Retrofit kalau proyeknya berkembang. */
 object Api {
 
     private fun call(ctx: Context, path: String, method: String, body: JSONObject?, useApiKey: Boolean): JSONObject {
@@ -33,15 +34,16 @@ object Api {
         return json
     }
 
+    /** Dipanggil sekali dari layar Pairing, pakai kode 6 digit dari dashboard. */
     fun pairClaim(ctx: Context, code: String): JSONObject =
         call(ctx, "/api/antimaling/pair/claim", "POST", JSONObject().put("code", code), useApiKey = false)
 
+    /** Dipanggil berkala oleh GuardService untuk cek ada perintah baru atau tidak. */
     fun fetchCommands(ctx: Context): JSONObject =
         call(ctx, "/api/antimaling/device/commands", "GET", null, useApiKey = true)
 
     fun ackCommand(ctx: Context, commandId: String, result: String) {
-        call(ctx, "/api/antimaling/device/ack", "POST",
-            JSONObject().put("commandId", commandId).put("result", result), useApiKey = true)
+        call(ctx, "/api/antimaling/device/ack", "POST", JSONObject().put("commandId", commandId).put("result", result), useApiKey = true)
     }
 
     fun sendLocation(ctx: Context, lat: Double, lng: Double, accuracy: Float) {
@@ -54,15 +56,11 @@ object Api {
             JSONObject().put("percent", percent).put("charging", charging), useApiKey = true)
     }
 
-    fun sendPhoto(ctx: Context, jpegBytes: ByteArray) {
-        val b64 = Base64.encodeToString(jpegBytes, Base64.NO_WRAP)
+    /** Kirim foto (base64 JPEG) hasil jepretan kamera depan pas ada yang
+     *  salah masukin PIN di lock screen — biar owner bisa lihat di dashboard
+     *  siapa yang lagi pegang HP-nya. Dipanggil di background thread. */
+    fun sendIntruderPhoto(ctx: Context, base64Jpeg: String) {
         call(ctx, "/api/antimaling/device/photo", "POST",
-            JSONObject().put("photo", b64), useApiKey = true)
-    }
-
-    fun fetchBlockedApps(ctx: Context): List<String> {
-        val res = call(ctx, "/api/antimaling/device/blocked-apps", "GET", null, useApiKey = true)
-        val arr = res.optJSONArray("packages") ?: return emptyList()
-        return (0 until arr.length()).map { arr.getString(it) }
+            JSONObject().put("photo", base64Jpeg), useApiKey = true)
     }
 }
