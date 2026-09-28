@@ -28,8 +28,8 @@ import org.json.JSONObject
  *  ini — juga membuat jelas ke pemilik HP bahwa app sedang aktif memantau).
  *
  *  Tiap 15 detik: tanya ke server "ada perintah baru?", kirim lokasi & baterai
- *  terbaru. Kalau ada perintah lock/alarm/wipe, langsung dieksekusi lalu
- *  dikonfirmasi (ack) ke server. */
+ *  terbaru, sync daftar app yang diblokir. Kalau ada perintah lock/alarm/wipe,
+ *  langsung dieksekusi lalu dikonfirmasi (ack) ke server. */
 class GuardService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
@@ -81,14 +81,29 @@ class GuardService : Service() {
         if (!Prefs.isPaired(this)) return
         try {
             val res = Api.fetchCommands(this)
-            val commands = res.optJSONArray("commands") ?: return
-            for (i in 0 until commands.length()) {
-                handleCommand(commands.getJSONObject(i))
+            val commands = res.optJSONArray("commands")
+            if (commands != null) {
+                for (i in 0 until commands.length()) {
+                    handleCommand(commands.getJSONObject(i))
+                }
             }
         } catch (e: Exception) {
             // Offline / server tidak bisa dihubungi — coba lagi di siklus berikutnya.
         }
+        syncBlockedApps()
         reportLocationAndBattery()
+    }
+
+    /** Ambil daftar app yang harus diblokir dari dashboard, simpan ke Prefs
+     *  lokal — AppBlockerService baca dari situ (bukan network) tiap ada
+     *  app dibuka, biar responsnya instan & gak boros kuota/baterai. */
+    private fun syncBlockedApps() {
+        try {
+            val packages = Api.fetchBlockedApps(this)
+            Prefs.setBlockedApps(this, packages.toSet())
+        } catch (e: Exception) {
+            // Offline — daftar blokir lama di Prefs tetap dipakai sampai berhasil sync lagi.
+        }
     }
 
     private fun handleCommand(cmd: JSONObject) {
@@ -122,7 +137,6 @@ class GuardService : Service() {
     private fun lockNow(pin: String) {
         if (pin.isBlank()) throw IllegalArgumentException("PIN kosong dari server")
         Prefs.setLockPin(this, pin)
-
         // Tanda buat orang yang pegang HP: senter kedip 3x pas HP dikunci.
         // Dipanggil di sini (masih di background thread pollOnce/Thread{}),
         // jadi aman pakai Thread.sleep tanpa nge-block UI.

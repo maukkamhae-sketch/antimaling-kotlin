@@ -63,4 +63,12 @@ object Api {
         call(ctx, "/api/antimaling/device/photo", "POST",
             JSONObject().put("photo", base64Jpeg), useApiKey = true)
     }
+
+    /** Daftar package app yang harus diblokir, diatur dari dashboard.
+     *  Dipakai oleh AppBlockerService (fitur "Blokir App"). */
+    fun fetchBlockedApps(ctx: Context): List<String> {
+        val res = call(ctx, "/api/antimaling/device/blocked-apps", "GET", null, useApiKey = true)
+        val arr = res.optJSONArray("packages") ?: return emptyList()
+        return (0 until arr.length()).map { arr.getString(it) }
+    }
 }
