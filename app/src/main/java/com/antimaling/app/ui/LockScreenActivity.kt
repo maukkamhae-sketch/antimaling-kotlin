@@ -72,8 +72,7 @@ class LockScreenActivity : AppCompatActivity() {
 
         hideSystemBars()
 
-        val expectedPin = Prefs.lockPin(this)
-        if (expectedPin.isNullOrBlank()) { unlocked = true; finish(); return }
+        if (!Prefs.hasLockPin(this)) { unlocked = true; finish(); return }
 
         setContentView(R.layout.activity_lock_screen)
         startLockTaskIfPossible()
@@ -84,7 +83,7 @@ class LockScreenActivity : AppCompatActivity() {
 
         unlockButton.setOnClickListener {
             val typed = pinInput.text.toString().trim()
-            if (typed.isNotEmpty() && typed == expectedPin) {
+            if (typed.isNotEmpty() && Prefs.checkLockPin(this, typed)) {
                 unlocked = true
                 stopLockTaskIfPossible()
                 finish()

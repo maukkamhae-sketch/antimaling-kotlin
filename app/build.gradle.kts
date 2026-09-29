@@ -45,4 +45,7 @@ dependencies {
     implementation("androidx.camera:camera-core:$camerax")
     implementation("androidx.camera:camera-camera2:$camerax")
     implementation("androidx.camera:camera-lifecycle:$camerax")
+
+    // Buat enkripsi api key & PIN yang disimpan lokal (EncryptedSharedPreferences).
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
