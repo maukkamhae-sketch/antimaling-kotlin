@@ -1,0 +1,70 @@
+name: Build Release APK
+
+# Jalan manual lewat tombol "Run workflow" di tab Actions. Hasilnya APK yang
+# sudah ditandatangani (release), lalu otomatis dibuat jadi GitHub Release
+# supaya ada link download publik (https://github.com/.../releases/download/...).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Nomor versi (contoh: 1.0.0)"
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Pasang Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Pasang Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Pasang Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Siapkan keystore dari Secret
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+
+      - name: Build APK release (sudah ditandatangani)
+        env:
+          RELEASE_KEYSTORE_PATH: release.keystore
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          gradle assembleRelease \
+            -PappVersionName=${{ github.event.inputs.version }} \
+            -PappVersionCode=${{ github.run_number }} \
+            --stacktrace
+
+      - name: Hapus keystore dari runner
+        if: always()
+        run: rm -f app/release.keystore
+
+      - name: Siapkan file APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/*.apk "out/AntiMaling-${{ github.event.inputs.version }}.apk"
+
+      - name: Buat GitHub Release + unggah APK
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: AntiMaling v${{ github.event.inputs.version }}
+          files: out/*.apk
+          
