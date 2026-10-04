@@ -27,11 +27,8 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Pasang Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setujui semua lisensi Android SDK
-        run: yes | sdkmanager --licenses > /dev/null || true
+      - name: Setujui semua lisensi Android SDK (pakai SDK bawaan runner)
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
 
       - name: Pasang Gradle
         uses: gradle/actions/setup-gradle@v4
