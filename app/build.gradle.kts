@@ -51,6 +51,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    // Dibutuhkan MainActivity.kt: ActivityMainBinding
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
