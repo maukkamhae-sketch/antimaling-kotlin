@@ -60,4 +60,13 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     // Tidak pakai library HTTP tambahan (Retrofit dkk) supaya skeleton ini ringan;
     // panggilan ke backend pakai HttpURLConnection bawaan Android (lihat net/Api.kt).
+
+    // Dibutuhkan Prefs.kt: MasterKey, EncryptedSharedPreferences (enkripsi api key & PIN)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Dibutuhkan LockScreenActivity.kt: ProcessCameraProvider, ImageCapture (ambil foto pencuri)
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
 }
